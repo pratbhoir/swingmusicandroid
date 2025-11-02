@@ -4,13 +4,14 @@ import com.android.swingmusic.auth.data.baseurlholder.BaseUrlHolder
 import com.android.swingmusic.auth.data.tokenholder.AuthTokenHolder
 import com.android.swingmusic.auth.domain.repository.AuthRepository
 import com.android.swingmusic.core.data.dto.FoldersAndTracksRequestDto
-import com.android.swingmusic.core.data.mapper.Map.toModel
 import com.android.swingmusic.core.data.mapper.Map.toTrack
 import com.android.swingmusic.core.data.util.Resource
 import com.android.swingmusic.core.domain.model.Track
 import com.android.swingmusic.core.domain.util.QueueSource
+import com.android.swingmusic.database.data.dao.DownloadedTracksDao
 import com.android.swingmusic.database.data.dao.LastPlayedTrackDao
 import com.android.swingmusic.database.data.dao.QueueDao
+import com.android.swingmusic.database.data.entity.DownloadTrackEntity
 import com.android.swingmusic.database.data.mapper.toEntity
 import com.android.swingmusic.database.data.mapper.toModel
 import com.android.swingmusic.database.domain.model.LastPlayedTrack
@@ -29,6 +30,7 @@ import javax.inject.Inject
 
 class DataPLayerRepository @Inject constructor(
     private val queueDao: QueueDao,
+    private val downloadDao: DownloadedTracksDao,
     private val lastPlayedTrackDao: LastPlayedTrackDao,
     private val networkApiService: NetworkApiService,
     private val authRepository: AuthRepository
@@ -37,6 +39,34 @@ class DataPLayerRepository @Inject constructor(
     override suspend fun insertQueue(track: List<Track>) {
         val trackEntities = track.map { it.toEntity() }
         queueDao.insertQueueInTransaction(trackEntities)
+    }
+    override suspend fun insertDownloadedTrack(track: Track) {
+        val trackEntities = DownloadTrackEntity(
+            trackHash = track.trackHash,
+            album = track.album,
+            albumHash = track.albumHash,
+            bitrate = track.bitrate,
+            duration = track.duration,
+            filepath = track.filepath,
+            folder = track.folder,
+            image = track.image,
+            isFavorite = track.isFavorite,
+            title = track.title,
+            albumTrackArtists = track.albumTrackArtists.map { it.toEntity() },
+            trackArtists = track.trackArtists.map { it.toEntity() },
+            disc = track.disc,
+            trackNumber = track.trackNumber
+        )
+        downloadDao.insertDownload(trackEntities)
+    }
+
+    override suspend fun clearDownloadByHash(track: Track) {
+        Timber.e("clearDownloadByHash: "+ track.trackHash)
+        downloadDao.clearDownloadByHash(track.trackHash)
+    }
+
+    override suspend fun getDownloadedTracks(): List<Track> {
+        return downloadDao.getDownloads().map { it.toModel() }
     }
 
     override suspend fun getSavedQueue(): List<Track> {

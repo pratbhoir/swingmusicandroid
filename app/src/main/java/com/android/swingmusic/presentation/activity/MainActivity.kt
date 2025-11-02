@@ -55,6 +55,7 @@ import com.android.swingmusic.folder.presentation.event.FolderUiEvent
 import com.android.swingmusic.folder.presentation.screen.destinations.FoldersAndTracksPaginatedScreenDestination
 import com.android.swingmusic.folder.presentation.viewmodel.FoldersViewModel
 import com.android.swingmusic.player.presentation.screen.MiniPlayer
+import com.android.swingmusic.player.presentation.screen.destinations.DownloadsScreenDestination
 import com.android.swingmusic.player.presentation.screen.destinations.NowPlayingScreenDestination
 import com.android.swingmusic.player.presentation.screen.destinations.QueueScreenDestination
 import com.android.swingmusic.player.presentation.viewmodel.MediaControllerViewModel
@@ -128,7 +129,8 @@ class MainActivity : ComponentActivity() {
                 LoginWithUsernameScreenDestination,
                 LoginWithQrCodeDestination,
                 NowPlayingScreenDestination,
-                QueueScreenDestination
+                QueueScreenDestination,
+                DownloadsScreenDestination
             )
 
             val showBottomNav =

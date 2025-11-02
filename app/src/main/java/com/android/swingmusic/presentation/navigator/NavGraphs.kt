@@ -9,6 +9,7 @@ import com.android.swingmusic.auth.presentation.screen.destinations.LoginWithQrC
 import com.android.swingmusic.auth.presentation.screen.destinations.LoginWithUsernameScreenDestination
 import com.android.swingmusic.folder.presentation.screen.destinations.FoldersAndTracksPaginatedScreenDestination
 import com.android.swingmusic.home.presentation.destinations.HomeDestination
+import com.android.swingmusic.player.presentation.screen.destinations.DownloadsScreenDestination
 import com.android.swingmusic.player.presentation.screen.destinations.NowPlayingScreenDestination
 import com.android.swingmusic.player.presentation.screen.destinations.QueueScreenDestination
 import com.android.swingmusic.search.presentation.screen.destinations.SearchScreenDestination
@@ -47,6 +48,7 @@ object NavGraphs {
                     ViewAllScreenOnArtistDestination,
                     ArtistInfoScreenDestination,
                     ViewAllSearchResultsDestination,
+                    DownloadsScreenDestination,
                 )
 
                 return (preAuthDestSpec + pastAuthDestSpec).associateBy { it.route }

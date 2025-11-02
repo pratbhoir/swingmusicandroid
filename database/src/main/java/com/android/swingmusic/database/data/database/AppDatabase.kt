@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.android.swingmusic.database.data.converter.Converters
 import com.android.swingmusic.database.data.dao.BaseUrlDao
+import com.android.swingmusic.database.data.dao.DownloadedTracksDao
 import com.android.swingmusic.database.data.dao.LastPlayedTrackDao
 import com.android.swingmusic.database.data.dao.QueueDao
 import com.android.swingmusic.database.data.dao.UserDao
@@ -12,15 +13,17 @@ import com.android.swingmusic.database.data.entity.BaseUrlEntity
 import com.android.swingmusic.database.data.entity.LastPlayedTrackEntity
 import com.android.swingmusic.database.data.entity.QueueEntity
 import com.android.swingmusic.database.data.entity.UserEntity
+import com.android.swingmusic.database.data.entity.DownloadTrackEntity
 
 @Database(
     entities = [
         QueueEntity::class,
         LastPlayedTrackEntity::class,
         BaseUrlEntity::class,
-        UserEntity::class
+        UserEntity::class,
+        DownloadTrackEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -33,4 +36,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun queueDao(): QueueDao
 
     abstract fun lastPlayedTrackDao(): LastPlayedTrackDao
+
+    abstract fun downloadedTracksDao(): DownloadedTracksDao
 }

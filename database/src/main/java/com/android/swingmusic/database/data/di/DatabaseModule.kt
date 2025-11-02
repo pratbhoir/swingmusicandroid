@@ -3,6 +3,7 @@ package com.android.swingmusic.database.data.di
 import android.content.Context
 import androidx.room.Room
 import com.android.swingmusic.database.data.dao.BaseUrlDao
+import com.android.swingmusic.database.data.dao.DownloadedTracksDao
 import com.android.swingmusic.database.data.dao.LastPlayedTrackDao
 import com.android.swingmusic.database.data.dao.QueueDao
 import com.android.swingmusic.database.data.dao.UserDao
@@ -46,5 +47,10 @@ object DatabaseModule {
     @Provides
     fun provideLastPlayedTrackDao(database: AppDatabase): LastPlayedTrackDao {
         return database.lastPlayedTrackDao()
+    }
+
+    @Provides
+    fun provideDownloadedTracksDao(database: AppDatabase): DownloadedTracksDao {
+        return database.downloadedTracksDao()
     }
 }

@@ -11,6 +11,7 @@ data class PlayerUiState(
     val source: QueueSource = QueueSource.UNKNOWN,
     val playingTrackIndex: Int = 0,
     val queue: List<Track> = emptyList(),
+    val downloadedTracks: List<Track> = emptyList(),
     val playbackState: PlaybackState = PlaybackState.PAUSED,
     val seekPosition: Float = 0.0F,
     val playbackDuration: String = "00:00",

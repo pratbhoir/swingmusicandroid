@@ -30,4 +30,9 @@ interface PLayerRepository {
     suspend fun removeTrackFromFavorite(trackHash: String): Flow<Resource<Boolean>>
 
     suspend fun getTracksChunk(folderPath: String, start: Int, limit: Int): List<Track>
+
+    suspend fun insertDownloadedTrack(track: Track)
+    suspend fun getDownloadedTracks(): List<Track>
+    suspend fun clearDownloadByHash(track: Track)
+
 }

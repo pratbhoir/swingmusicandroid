@@ -50,13 +50,21 @@ import timber.log.Timber
 import javax.inject.Inject
 import kotlin.math.roundToInt
 import androidx.core.net.toUri
-
+import java.io.File
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.android.swingmusic.auth.data.tokenholder.AuthTokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flow
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 @HiltViewModel
 class MediaControllerViewModel @Inject constructor(
     private val pLayerRepository: PLayerRepository,
     private val authRepository: AuthRepository,
-    private val vibrator: Vibrator
+    private val vibrator: Vibrator,
+    @ApplicationContext private val context: Context   // 👈 add this
 ) : ViewModel() {
     private val _baseUrl: MutableStateFlow<String?> = MutableStateFlow(null)
     val baseUrl: StateFlow<String?> get() = _baseUrl
@@ -97,6 +105,7 @@ class MediaControllerViewModel @Inject constructor(
             mediaController = controller
 
             initQueue()
+            initDownlods()
         }
     }
 
@@ -137,6 +146,14 @@ class MediaControllerViewModel @Inject constructor(
             }
         }
     }
+    private fun initDownlods(isOnSessionReconnect: Boolean = false) {
+        viewModelScope.launch {
+            val downloadedTracks = pLayerRepository.getDownloadedTracks()
+            _playerUiState.value = _playerUiState.value.copy(
+                downloadedTracks = downloadedTracks
+            )
+        }
+    }
 
     private fun initQueue(isOnSessionReconnect: Boolean = false) {
         viewModelScope.launch {
@@ -144,6 +161,7 @@ class MediaControllerViewModel @Inject constructor(
 
             val savedQueue = pLayerRepository.getSavedQueue()
             val lastPlayedTrack = pLayerRepository.getLastPlayedTrack()
+            val downloadedTracks = pLayerRepository.getDownloadedTracks()
 
             val lastPlayedTrackIndex = lastPlayedTrack?.indexInQueue ?: -1
             val lastPlayPositionMs = lastPlayedTrack?.lastPlayPositionMs ?: 0L
@@ -278,9 +296,20 @@ class MediaControllerViewModel @Inject constructor(
     }
 
     private fun createMediaItem(id: Int, track: Track): MediaItem {
-        val encodedFilePath = Uri.encode(track.filepath)
-        val uriString = "${_baseUrl.value}file/${track.trackHash}/legacy?filepath=$encodedFilePath"
-        val uri = uriString.toUri()
+        val downloadsDir = context.getExternalFilesDir("downloads")
+        val localFile = File(downloadsDir, "${track.trackHash}.mp3")
+
+        val uri = if (localFile.exists()) {
+            Uri.fromFile(localFile) // 👈 play local version
+        } else {
+            val encodedFilePath = Uri.encode(track.filepath)
+            val uriString = "${_baseUrl.value}file/${track.trackHash}/legacy?filepath=$encodedFilePath"
+            uriString.toUri() // 👈 stream from server
+        }
+
+//        val encodedFilePath = Uri.encode(track.filepath)
+//        val uriString = "${_baseUrl.value}file/${track.trackHash}/legacy?filepath=$encodedFilePath"
+//        val uri = uriString.toUri()
 
         val artworkUri = "${_baseUrl.value}img/thumbnail/${track.image}".toUri()
         val artists = track.trackArtists.joinToString(", ") { it.name }
@@ -641,6 +670,90 @@ class MediaControllerViewModel @Inject constructor(
             }
         }
     }
+
+     public fun downloadTrackFile(track: Track) {
+
+         viewModelScope.launch {
+             try {
+                 pLayerRepository.insertDownloadedTrack(track)
+             } catch (e: Exception) {
+                 Timber.e("ERROR SAVING NEW Downloaded Track!")
+             }
+         }
+         viewModelScope.launch(Dispatchers.IO) {
+             val downloadsDir = context.getExternalFilesDir("downloads") ?: return@launch
+             val localFile = File(downloadsDir, "${track.trackHash}.mp3")
+
+             if (localFile.exists()) {
+                 Timber.d("File already downloaded: ${localFile.path}")
+                 return@launch
+             }
+
+             try {
+                 Timber.d("Downloading track: ${track.title}")
+                 val client = OkHttpClient.Builder()
+                     .connectTimeout(30, TimeUnit.SECONDS)
+                     .readTimeout(60, TimeUnit.SECONDS)
+                     .writeTimeout(60, TimeUnit.SECONDS)
+                     .retryOnConnectionFailure(true)
+                     .build()
+
+                 val encodedFilePath = Uri.encode(track.filepath)
+                 val uriString = "${_baseUrl.value}file/${track.trackHash}/legacy?filepath=$encodedFilePath"
+
+                 val accessToken = AuthTokenHolder.accessToken ?: run {
+                     Timber.e("Access token not found")
+                     return@launch
+                 }
+
+                 val request = okhttp3.Request.Builder()
+                     .url(uriString)
+                     .addHeader("Authorization", "Bearer $accessToken")
+                     .build()
+
+                 client.newCall(request).execute().use { response ->
+                     if (response.isSuccessful) {
+                         response.body?.byteStream()?.use { input ->
+                             localFile.outputStream().use { output ->
+                                 input.copyTo(output)
+                             }
+                         }
+                         Timber.d("Download complete: ${localFile.path}")
+                         initDownlods(true)
+                     } else {
+                         Timber.e("Download failed: ${response.code}")
+                     }
+                 }
+             } catch (e: Exception) {
+                 Timber.e(e, "Error downloading track")
+             }
+         }
+     }
+
+    public fun clearDownloadedTrack(track: Track) {
+        viewModelScope.launch {
+            try {
+                pLayerRepository.clearDownloadByHash(track)
+                initDownlods(true)
+            } catch (e: Exception) {
+                Timber.e("ERROR SAVING NEW Downloaded Track!")
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val downloadsDir = context.getExternalFilesDir("downloads") ?: return@launch
+            val localFile = File(downloadsDir, "${track.trackHash}.mp3")
+
+            if (localFile.exists()) {
+                val deleted = localFile.delete()
+                if (deleted) {
+                    Timber.d("Deleted existing file: ${localFile.path}")
+                } else {
+                    Timber.e("Failed to delete existing file: ${localFile.path}")
+                }
+            }
+        }
+    }
+
 
     fun onPlayerUiEvent(event: PlayerUiEvent) {
         mediaController?.let { controller ->

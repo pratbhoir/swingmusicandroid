@@ -3,6 +3,7 @@ package com.android.swingmusic.database.data.mapper
 import com.android.swingmusic.core.domain.model.Track
 import com.android.swingmusic.core.domain.model.TrackArtist
 import com.android.swingmusic.database.data.entity.BaseUrlEntity
+import com.android.swingmusic.database.data.entity.DownloadTrackEntity
 import com.android.swingmusic.database.data.entity.LastPlayedTrackEntity
 import com.android.swingmusic.database.data.entity.QueueEntity
 import com.android.swingmusic.database.data.entity.TrackArtistEntity
@@ -61,6 +62,24 @@ fun Track.toEntity(): QueueEntity {
         trackNumber = this.trackNumber
     )
 }
+fun Track.toDownloadEntity(): DownloadTrackEntity {
+    return DownloadTrackEntity(
+        trackHash = this.trackHash,
+        album = this.album,
+        albumHash = this.albumHash,
+        bitrate = this.bitrate,
+        duration = this.duration,
+        filepath = this.filepath,
+        folder = this.folder,
+        image = this.image,
+        isFavorite = this.isFavorite,
+        title = this.title,
+        albumTrackArtists = this.albumTrackArtists.map { it.toEntity() },
+        trackArtists = this.trackArtists.map { it.toEntity() },
+        disc = this.disc,
+        trackNumber = this.trackNumber
+    )
+}
 
 fun TrackArtist.toEntity(): TrackArtistEntity {
     return TrackArtistEntity(
@@ -71,6 +90,24 @@ fun TrackArtist.toEntity(): TrackArtistEntity {
 }
 
 fun QueueEntity.toModel(): Track {
+    return Track(
+        trackHash = this.trackHash,
+        album = this.album,
+        albumHash = this.albumHash,
+        bitrate = this.bitrate,
+        duration = this.duration,
+        filepath = this.filepath,
+        folder = this.folder,
+        image = this.image,
+        isFavorite = this.isFavorite,
+        title = this.title,
+        albumTrackArtists = this.albumTrackArtists.map { it.toModel() },
+        trackArtists = this.trackArtists.map { it.toModel() },
+        disc = this.disc,
+        trackNumber = this.trackNumber
+    )
+}
+fun DownloadTrackEntity.toModel(): Track {
     return Track(
         trackHash = this.trackHash,
         album = this.album,

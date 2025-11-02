@@ -95,7 +95,8 @@ private fun FoldersAndTracksPaginated(
     onGotoArtist: (hash: String) -> Unit,
     baseUrl: String,
     isManualRefreshing: Boolean,
-    onManualRefreshingChange: (Boolean) -> Unit
+    onManualRefreshingChange: (Boolean) -> Unit,
+    onGotoDownloadsScreen:() -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -190,6 +191,13 @@ private fun FoldersAndTracksPaginated(
                                 baseUrl = baseUrl,
                                 isFavorite = track.isFavorite,
                                 bottomSheetItems = listOf(
+                                    BottomSheetItemModel(
+                                        label = "Download",
+                                        enabled = true,
+                                        painterId = R.drawable.arrow_downward,
+                                        track = track,
+                                        sheetAction = BottomSheetAction.DownloadTrack(track)
+                                    ),
                                     BottomSheetItemModel(
                                         label = "Go to Artist",
                                         enabled = true,
@@ -368,6 +376,9 @@ private fun FoldersAndTracksPaginated(
                                             Button(onClick = { pagingContent.retry() }) {
                                                 Text("RETRY")
                                             }
+                                            Button(onClick = { onGotoDownloadsScreen() }) {
+                                                Text("DOWNLOADS")
+                                            }
                                         }
                                     }
                                 }
@@ -423,6 +434,9 @@ private fun FoldersAndTracksPaginated(
 
                                                 Button(onClick = { pagingContent.retry() }) {
                                                     Text("RETRY")
+                                                }
+                                                Button(onClick = { onGotoDownloadsScreen() }) {
+                                                    Text("DOWNLOADS")
                                                 }
                                             }
                                         }
@@ -641,11 +655,22 @@ fun FoldersAndTracksPaginatedScreen(
                     )
                 }
 
+                is BottomSheetAction.DownloadTrack -> {
+                    mediaControllerViewModel.downloadTrackFile(track)
+                }
+                is BottomSheetAction.ClearDownloadTrack -> {
+                    mediaControllerViewModel.clearDownloadedTrack(track)
+                }
+
+
                 else -> {}
             }
         },
         onGotoArtist = { hash ->
             navigator.gotoArtistInfo(hash)
+        },
+        onGotoDownloadsScreen = {  ->
+            navigator.gotoDownloadsScreen()
         },
         baseUrl = baseUrl ?: ""
     )

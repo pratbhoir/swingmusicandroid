@@ -9,6 +9,7 @@ import com.android.swingmusic.auth.presentation.screen.destinations.LoginWithUse
 import com.android.swingmusic.common.presentation.navigator.CommonNavigator
 import com.android.swingmusic.folder.presentation.screen.destinations.FoldersAndTracksPaginatedScreenDestination
 import com.android.swingmusic.home.presentation.destinations.HomeDestination
+import com.android.swingmusic.player.presentation.screen.destinations.DownloadsScreenDestination
 import com.android.swingmusic.player.presentation.screen.destinations.QueueScreenDestination
 import com.android.swingmusic.search.presentation.screen.destinations.ViewAllSearchResultsDestination
 import com.ramcosta.composedestinations.navigation.navigate
@@ -97,6 +98,16 @@ class CoreNavigator(
         }
 
     }
+
+    override fun gotoDownloadsScreen() {
+        val targetDestination = DownloadsScreenDestination
+
+        navController.navigate(targetDestination) {
+            launchSingleTop = true
+        }
+
+    }
+
 
     override fun gotoArtistInfo(artistHash: String) {
         val targetDestination = ArtistInfoScreenDestination(

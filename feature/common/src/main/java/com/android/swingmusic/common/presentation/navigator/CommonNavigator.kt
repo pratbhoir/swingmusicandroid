@@ -17,6 +17,8 @@ interface CommonNavigator {
 
     fun gotoQueueScreen()
 
+    fun gotoDownloadsScreen()
+
     fun gotoArtistInfo(artistHash: String)
 
     fun gotoViewAllOnArtistScreen(viewAllType: String, artistName: String, baseUrl: String)

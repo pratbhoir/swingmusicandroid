@@ -70,6 +70,7 @@ import com.android.swingmusic.core.domain.util.RepeatMode
 import com.android.swingmusic.core.domain.util.ShuffleMode
 import com.android.swingmusic.player.presentation.event.PlayerUiEvent
 import com.android.swingmusic.player.presentation.event.QueueEvent
+import com.android.swingmusic.player.presentation.screen.destinations.DownloadsScreenDestination
 import com.android.swingmusic.player.presentation.util.calculateCurrentOffsetForPage
 import com.android.swingmusic.player.presentation.viewmodel.MediaControllerViewModel
 import com.android.swingmusic.uicomponent.R
@@ -80,6 +81,7 @@ import com.android.swingmusic.uicomponent.presentation.theme.SwingMusicTheme_Pre
 import com.android.swingmusic.uicomponent.presentation.util.BlurTransformation
 import com.android.swingmusic.uicomponent.presentation.util.formatDuration
 import com.ramcosta.composedestinations.annotation.Destination
+import timber.log.Timber
 import java.util.Locale
 
 @Composable
@@ -107,7 +109,9 @@ private fun NowPlaying(
     onClickMore: () -> Unit,
     onClickLyricsIcon: () -> Unit,
     onToggleFavorite: (Boolean, String) -> Unit,
-    onClickQueueIcon: () -> Unit
+    onClickQueueIcon: () -> Unit,
+    onClickDownlodsScreenIcon: () -> Unit,
+    onDownloadTrack: (Track) -> Unit
 ) {
     if (track == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -586,6 +590,15 @@ private fun NowPlaying(
                     )
                 }
 
+                IconButton(onClick = {
+                    onClickDownlodsScreenIcon()
+                }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.arrow_downward),
+                        contentDescription = "Downloads"
+                    )
+                }
+
                 // TODO: Return this when contextual menu is ready
                 /*IconButton(onClick = {
                     onClickMore()
@@ -684,10 +697,16 @@ fun NowPlayingScreen(
         onClickQueueIcon = {
             navigator.gotoQueueScreen()
         },
+        onClickDownlodsScreenIcon = {
+            navigator.gotoDownloadsScreen()
+        },
         onClickMore = {
             mediaControllerViewModel.onPlayerUiEvent(
                 PlayerUiEvent.OnClickMore
             )
+        },
+        onDownloadTrack = { track ->
+            val file = mediaControllerViewModel.downloadTrackFile(track)
         }
     )
 }
@@ -761,7 +780,9 @@ fun FullPlayerPreview() {
             onClickLyricsIcon = {},
             onToggleFavorite = { _, _ -> },
             onClickQueueIcon = {},
-            onClickMore = {}
+            onClickDownlodsScreenIcon = {},
+            onClickMore = {},
+            onDownloadTrack = {_ -> }
         )
     }
 }
