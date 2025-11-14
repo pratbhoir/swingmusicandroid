@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.android.swingmusic.core.domain.model.TrackArtist
 import com.android.swingmusic.core.domain.util.PlaybackState
 import com.android.swingmusic.player.presentation.event.PlayerUiEvent
 import com.android.swingmusic.player.presentation.viewmodel.MediaControllerViewModel
@@ -55,6 +56,7 @@ import kotlin.math.roundToInt
 @Composable
 private fun MiniPlayer(
     trackTitle: String,
+    trackArtist: String,
     trackImage: String,
     playbackState: PlaybackState,
     isBuffering: Boolean,
@@ -114,7 +116,7 @@ private fun MiniPlayer(
                 ) {
                     AsyncImage(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(52.dp)
                             .clip(RoundedCornerShape(18)),
                         model = ImageRequest.Builder(LocalContext.current)
                             .data("${baseUrl}img/thumbnail/small/${trackImage}")
@@ -129,22 +131,35 @@ private fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Text(
-                        text = trackTitle,
-                        maxLines = 1,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if ((swipeDistance.toInt() != 0))
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = .25F) else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
-                    )
+                    Column {
+                        Text(
+                            text = trackTitle,
+                            maxLines = 1,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if ((swipeDistance.toInt() != 0))
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = .25F) else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
+                        )
+                        Text(
+                            text = trackArtist,
+                            maxLines = 1,
+                            style = MaterialTheme.typography.bodyMedium,
+//                            fontWeight = FontWeight.SemiBold,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if ((swipeDistance.toInt() != 0))
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = .25F) else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
+                        )
+                    }
+
                 }
 
                 // Player State Indicator
                 IconButton(
                     modifier = Modifier
-                        .padding(end = 8.dp),
+                        .padding(end = 10.dp),
                     onClick = {
                         if (playbackState == PlaybackState.ERROR) {
                             onResumePlayBackFromError()
@@ -170,7 +185,7 @@ private fun MiniPlayer(
                         // PAUSED, ERROR
                         else -> {
                             Icon(
-                                painter = painterResource(id = R.drawable.play_arrow),
+                                painter = painterResource(id = R.drawable.play_arrow_fill),
                                 contentDescription = "paused state indicator"
                             )
                         }
@@ -207,6 +222,7 @@ fun MiniPlayer(
     playerUiState.nowPlayingTrack?.let { track ->
         MiniPlayer(
             trackTitle = track.title,
+            trackArtist = track.trackArtists.joinToString(", ") { it.name },
             trackImage = track.image,
             playbackState = playerUiState.playbackState,
             isBuffering = playerUiState.isBuffering,
@@ -242,6 +258,7 @@ fun MiniPlayerPreview() {
             baseUrl = "",
             trackTitle = "Track title is too large to be displayed",
             trackImage = "https://image",
+            trackArtist = "Artist",
             playbackState = PlaybackState.PLAYING,
             isBuffering = true,
             playbackProgress = 0.2F,

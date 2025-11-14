@@ -53,9 +53,11 @@ import androidx.core.net.toUri
 import java.io.File
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
+import android.widget.Toast
 import com.android.swingmusic.auth.data.tokenholder.AuthTokenHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -674,11 +676,7 @@ class MediaControllerViewModel @Inject constructor(
      public fun downloadTrackFile(track: Track) {
 
          viewModelScope.launch {
-             try {
-                 pLayerRepository.insertDownloadedTrack(track)
-             } catch (e: Exception) {
-                 Timber.e("ERROR SAVING NEW Downloaded Track!")
-             }
+
          }
          viewModelScope.launch(Dispatchers.IO) {
              val downloadsDir = context.getExternalFilesDir("downloads") ?: return@launch
@@ -724,9 +722,19 @@ class MediaControllerViewModel @Inject constructor(
                          Timber.e("Download failed: ${response.code}")
                      }
                  }
+                 try {
+                     pLayerRepository.insertDownloadedTrack(track)
+                 } catch (e: Exception) {
+                     Timber.e("ERROR SAVING NEW Downloaded Track!")
+                 }
              } catch (e: Exception) {
                  Timber.e(e, "Error downloading track")
              }
+             //Toast.makeText(context, "Download Complete!", Toast.LENGTH_SHORT).show()
+             withContext(Dispatchers.Main) {
+                 Toast.makeText(context, "Download Complete!", Toast.LENGTH_SHORT).show()
+             }
+
          }
      }
 

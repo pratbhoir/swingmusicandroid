@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
                 LoginWithQrCodeDestination,
                 NowPlayingScreenDestination,
                 QueueScreenDestination,
-                DownloadsScreenDestination
+                //DownloadsScreenDestination
             )
 
             val showBottomNav =
@@ -142,6 +142,7 @@ class MainActivity : ComponentActivity() {
                 BottomNavItem.Album,
                 // BottomNavItem.Playlist,
                 BottomNavItem.Artist,
+                BottomNavItem.Downloads,
                 BottomNavItem.Search,
             )
 
@@ -157,6 +158,10 @@ class MainActivity : ComponentActivity() {
                     AllArtistsScreenDestination.route,
                     ArtistInfoScreenDestination.route,
                     ViewAllScreenOnArtistDestination.route
+                ),
+                BottomNavItem.Downloads to listOf(
+                    DownloadsScreenDestination.route,
+                    ViewAllSearchResultsDestination.route
                 ),
                 BottomNavItem.Search to listOf(
                     SearchScreenDestination.route,

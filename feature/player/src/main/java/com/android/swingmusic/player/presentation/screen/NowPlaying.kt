@@ -1,6 +1,8 @@
 package com.android.swingmusic.player.presentation.screen
 
+import android.content.Context
 import android.content.res.Configuration
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.core.EaseOutQuad
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -27,12 +29,18 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,7 +78,6 @@ import com.android.swingmusic.core.domain.util.RepeatMode
 import com.android.swingmusic.core.domain.util.ShuffleMode
 import com.android.swingmusic.player.presentation.event.PlayerUiEvent
 import com.android.swingmusic.player.presentation.event.QueueEvent
-import com.android.swingmusic.player.presentation.screen.destinations.DownloadsScreenDestination
 import com.android.swingmusic.player.presentation.util.calculateCurrentOffsetForPage
 import com.android.swingmusic.player.presentation.viewmodel.MediaControllerViewModel
 import com.android.swingmusic.uicomponent.R
@@ -81,7 +88,6 @@ import com.android.swingmusic.uicomponent.presentation.theme.SwingMusicTheme_Pre
 import com.android.swingmusic.uicomponent.presentation.util.BlurTransformation
 import com.android.swingmusic.uicomponent.presentation.util.formatDuration
 import com.ramcosta.composedestinations.annotation.Destination
-import timber.log.Timber
 import java.util.Locale
 
 @Composable
@@ -109,9 +115,7 @@ private fun NowPlaying(
     onClickMore: () -> Unit,
     onClickLyricsIcon: () -> Unit,
     onToggleFavorite: (Boolean, String) -> Unit,
-    onClickQueueIcon: () -> Unit,
-    onClickDownlodsScreenIcon: () -> Unit,
-    onDownloadTrack: (Track) -> Unit
+    onClickQueueIcon: () -> Unit
 ) {
     if (track == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -151,7 +155,7 @@ private fun NowPlaying(
     }
     val playbackStateIcon = when (playbackState) {
         PlaybackState.PLAYING -> R.drawable.pause_icon
-        PlaybackState.PAUSED -> R.drawable.play_arrow
+        PlaybackState.PAUSED -> R.drawable.play_arrow_fill
         PlaybackState.ERROR -> R.drawable.error
     }
 
@@ -236,11 +240,16 @@ private fun NowPlaying(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            //PlayerTopBar: Back, Title, More
+            PlayerTopBar()
+
+            // Artwork, SeekBar...
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    //.fillMaxSize()
+                    .padding(horizontal = 12.dp)
             ) {
-                // Artwork, SeekBar...
+
                 HorizontalPager(
                     modifier = Modifier.fillMaxWidth(),
                     state = pagerState,
@@ -263,13 +272,13 @@ private fun NowPlaying(
                         AsyncImage(
                             modifier = Modifier
                                 .size(356.dp)
-                                .clip(RoundedCornerShape(7))
+                                .clip(RoundedCornerShape(5))
                                 .graphicsLayer {
                                     val scale = lerp(1f, 1.25f, pageOffset)
                                     scaleX = scale
                                     scaleY = scale
                                     clip = true
-                                    shape = RoundedCornerShape(7)
+                                    shape = RoundedCornerShape(5)
                                 },
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(imageData)
@@ -284,334 +293,524 @@ private fun NowPlaying(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth(.78F)) {
-                        Text(
-                            text = track.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontSize = 18.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        LazyRow(modifier = Modifier.fillMaxWidth()) {
-                            track.trackArtists.forEachIndexed { index, trackArtist ->
-                                item {
-                                    Text(
-                                        modifier = Modifier
-                                            .clickable(
-                                                onClick = { onClickArtist(trackArtist.artistHash) },
-                                                indication = null,
-                                                interactionSource = remember { MutableInteractionSource() }
-                                            ),
-                                        text = trackArtist.name,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .84F),
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (index != track.trackArtists.lastIndex) {
-                                        Text(
-                                            text = ", ",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(
-                                                alpha = .84F
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    IconButton(
-                        modifier = Modifier
-                            .clip(CircleShape),
-                        onClick = {
-                            onToggleFavorite(track.isFavorite, track.trackHash)
-                        }) {
-                        val icon =
-                            if (track.isFavorite) R.drawable.fav_filled
-                            else R.drawable.fav_not_filled
-                        Icon(
-                            painter = painterResource(id = icon),
-                            contentDescription = "Favorite"
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                Column(
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                ) {
-                    WavySlider(
-                        modifier = Modifier.height(12.dp),
-                        value = seekPosition,
-                        onValueChange = { value ->
-                            onSeekPlayBack(value)
-                        },
-                        waveLength = 32.dp,
-                        waveHeight = 8.dp,
-                        waveVelocity = (if (animateWave) 16.dp else 0.dp) to WaveDirection.HEAD,
-                        waveThickness = 4.dp,
-                        trackThickness = 4.dp,
-                        incremental = false,
-                        animationSpecs = WaveAnimationSpecs(
-                            waveHeightAnimationSpec = tween(
-                                durationMillis = 300,
-                                easing = FastOutSlowInEasing
-                            ),
-                            waveVelocityAnimationSpec = tween(
-                                durationMillis = 2000,
-                                easing = LinearOutSlowInEasing
-                            ),
-                            waveStartSpreadAnimationSpec = tween(
-                                durationMillis = 0,
-                                easing = EaseOutQuad
-                            )
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = playbackDuration,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
-                        )
-                        Text(
-                            text = if (playbackState == PlaybackState.ERROR)
-                                track.duration.formatDuration() else trackDuration,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    IconButton(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .5F)
-                            ), onClick = {
-                            onClickPrev()
-                        }
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.prev),
-                            contentDescription = "Prev"
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier.clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick = {
-                                if (playbackState != PlaybackState.ERROR) {
-                                    onTogglePlayerState(playbackState)
-                                } else {
-                                    onResumePlayBackFromError()
-                                }
-                            }
-                        )
-                    ) {
-                        Box(
-                            modifier = Modifier.wrapContentSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (playbackState == PlaybackState.ERROR) {
-                                Icon(
-                                    modifier = Modifier
-                                        .padding(horizontal = 5.dp)
-                                        .size(70.dp),
-                                    painter = painterResource(id = playbackStateIcon),
-                                    tint = if (isBuffering)
-                                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = .25F) else
-                                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = .75F),
-                                    contentDescription = "Error state"
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .height(70.dp)
-                                        .width(80.dp)
-                                        .clip(RoundedCornerShape(32))
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        modifier = Modifier.size(44.dp),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        painter = painterResource(id = playbackStateIcon),
-                                        contentDescription = "Play/Pause"
-                                    )
-                                }
-                            }
-
-                            if (isBuffering) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(50.dp),
-                                    strokeCap = StrokeCap.Round,
-                                    strokeWidth = 1.dp,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
-                    }
-
-                    IconButton(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .5F)
-                            ), onClick = {
-                            onClickNext()
-                        }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.next),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            contentDescription = "Next"
-                        )
-                    }
-                }
-
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Player Track Info: Title, Artist, Favorite
+            PlayerTrackInfo(
+                track,
+                onClickArtist,
+                onToggleFavorite,
+                onSeekPlayBack,
+                playbackState,
+                seekPosition,
+                playbackDuration,
+                trackDuration,
+                animateWave
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Player Controls: Shuffle, Next, Play/Pause, Forward, Repeat
+            PlayerControls(
+                playbackState,
+                playbackStateIcon,
+                onToggleShuffleMode,
+                onClickPrev,
+                onClickNext,
+                shuffleMode,
+                onResumePlayBackFromError,
+                onToggleRepeatMode,
+                repeatMode,
+                repeatModeIcon,
+                onTogglePlayerState,
+                isBuffering,
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Bitrate, Track format
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24))
-                    .background(
-                        if (isDarkTheme) fileTypeTextColor.copy(alpha = .075F) else fileTypeBadgeColor
-                    )
-                    .wrapContentSize()
-                    .padding(8.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = fileType,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = fileTypeTextColor
-                    )
+            PlayerExtraDetails(track,isDarkTheme)
 
-                    Text(
-                        text = " • ",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = fileTypeTextColor
-                    )
-
-                    Text(
-                        text = "${track.bitrate} Kbps",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = fileTypeTextColor
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Navigation and Control Icons
+            PlayerBottomTabs(onClickQueueIcon,onClickLyricsIcon)
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+data class CastDevice(
+    val name: String,
+    val iconRes: Int
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlayerTopBar() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        var showCastScreen by remember { mutableStateOf(false) }
+        val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+
+        IconButton(onClick = { backDispatcher?.onBackPressed() }) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close", tint = Color.White)
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+//        // Segmented Control for Song/Video
+//        Row(
+//            modifier = Modifier
+//                .clip(CircleShape)
+//                .background(Color.DarkGray)
+//        ) {
+//            TextButton(
+//                onClick = { /* TODO */ },
+//                colors = ButtonDefaults.textButtonColors(contentColor = Color.Black),
+//                modifier = Modifier
+//                    .clip(CircleShape)
+//                    .background(Color.White)
+//            ) {
+//                Text("Song", fontWeight = FontWeight.Bold)
+//            }
+//            TextButton(
+//                onClick = { /* TODO */ },
+//                colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
+//            ) {
+//                Text("Video")
+//            }
+//        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // TODO: Return this when cast is ready
+        IconButton(onClick = { showCastScreen = true }) {
+            Icon(painter = painterResource(id = R.drawable.cast), contentDescription = "Cast", tint = Color.White)
+        }
+        // TODO: Return this when contextual menu is ready
+        IconButton(onClick = {  }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+        }
+
+        //Casting screen
+
+        var devices = listOf(
+            CastDevice("Bedroom Speaker", R.drawable.cast),
+            CastDevice("LivingRoom TV", R.drawable.cast)
+        )
+
+        fun onDeviceSelected(device: CastDevice){
+
+        }
+
+        if (showCastScreen) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showCastScreen = false
+                },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                tonalElevation = 8.dp,
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Connect to a device",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding( bottom = 12.dp, start = 12.dp)
+                    )
+
+                    devices.forEach { device ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onDeviceSelected(device) }
+                                .padding(vertical = 12.dp, horizontal = 22.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(id = device.iconRes),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .padding( end = 5.dp)
+                            )
+                            Text(
+                                text = device.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+}
+
+@Composable
+private fun PlayerTrackInfo(
+    track: Track,
+    onClickArtist: (String) -> Unit,
+    onToggleFavorite: (Boolean, String) -> Unit,
+    onSeekPlayBack: (Float) -> Unit,
+    playbackState: PlaybackState,
+    seekPosition: Float,
+    playbackDuration: String,
+    trackDuration: String,
+    animateWave: Boolean,
+
+    ) {
+
+    Column(
+        modifier = Modifier
+        //.fillMaxSize()
+        //.padding(horizontal = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.fillMaxWidth(.78F)) {
+                Text(
+                    text = track.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                LazyRow(modifier = Modifier.fillMaxWidth()) {
+                    track.trackArtists.forEachIndexed { index, trackArtist ->
+                        item {
+                            Text(
+                                modifier = Modifier
+                                    .clickable(
+                                        onClick = { onClickArtist(trackArtist.artistHash) },
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ),
+                                text = trackArtist.name,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .84F),
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (index != track.trackArtists.lastIndex) {
+                                Text(
+                                    text = ", ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(
+                                        alpha = .84F
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            IconButton(
+                modifier = Modifier
+                    .clip(CircleShape),
+                onClick = {
+                    onToggleFavorite(track.isFavorite, track.trackHash)
+                }) {
+                val icon =
+                    if (track.isFavorite) R.drawable.fav_filled
+                    else R.drawable.fav_not_filled
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = "Favorite"
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Column(
+            modifier = Modifier.padding(horizontal = 24.dp)
+        ) {
+            WavySlider(
+                modifier = Modifier.height(12.dp),
+                value = seekPosition,
+                onValueChange = { value ->
+                    onSeekPlayBack(value)
+                },
+                waveLength = 32.dp,
+                waveHeight = 6.dp,
+                waveVelocity = (if (animateWave) 16.dp else 0.dp) to WaveDirection.HEAD,
+                waveThickness = 2.dp,
+                trackThickness = 2.dp,
+                incremental = false,
+                animationSpecs = WaveAnimationSpecs(
+                    waveHeightAnimationSpec = tween(
+                        durationMillis = 300,
+                        easing = FastOutSlowInEasing
+                    ),
+                    waveVelocityAnimationSpec = tween(
+                        durationMillis = 2000,
+                        easing = LinearOutSlowInEasing
+                    ),
+                    waveStartSpreadAnimationSpec = tween(
+                        durationMillis = 0,
+                        easing = EaseOutQuad
+                    )
+                )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .background(MaterialTheme.colorScheme.inverseOnSurface)
-                    .padding(vertical = 12.dp, horizontal = 32.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                // TODO: Return this when lyrics is ready
-                /*IconButton(onClick = {
-                    onClickLyricsIcon()
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.lyrics_icon),
-                        contentDescription = "Lyrics"
-                    )
-                }*/
+                Text(
+                    text = playbackDuration,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
+                )
+                Text(
+                    text = if (playbackState == PlaybackState.ERROR)
+                        track.duration.formatDuration() else trackDuration,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .84F)
+                )
+            }
+        }
 
-                IconButton(onClick = {
-                    onToggleRepeatMode(repeatMode)
-                }) {
+    }
+
+}
+
+@Composable
+private fun PlayerControls(
+    playbackState: PlaybackState,
+    playbackStateIcon: Int,
+    onToggleShuffleMode: (ShuffleMode) -> Unit,
+    onClickPrev: () -> Unit,
+    onClickNext:() -> Unit,
+    shuffleMode: ShuffleMode,
+    onResumePlayBackFromError: () -> Unit,
+    onToggleRepeatMode: (RepeatMode) -> Unit,
+    repeatMode: RepeatMode,
+    repeatModeIcon: Int,
+    onTogglePlayerState: (PlaybackState) -> Unit,
+    isBuffering: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val activeColor = Color.White
+        val inactiveColor = Color.Gray
+
+        IconButton(onClick = { onToggleShuffleMode(shuffleMode)}) {
+            Icon(
+                painter = painterResource(id = R.drawable.shuffle),
+                //imageVector = Icons.Default.Clear,
+                contentDescription = "Shuffle",
+                tint = if (shuffleMode == ShuffleMode.SHUFFLE_ON) activeColor else inactiveColor
+            )
+        }
+
+        IconButton(onClick = {  onClickPrev() }) {
+            Icon(
+                painter = painterResource(id = R.drawable.prev),
+                //imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Previous",
+                modifier = Modifier.size(40.dp),
+                tint = activeColor
+            )
+        }
+
+        // Large Play/Pause button
+        Box(
+            modifier = Modifier.clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = {
+                    if (playbackState != PlaybackState.ERROR) {
+                        onTogglePlayerState(playbackState)
+                    } else {
+                        onResumePlayBackFromError()
+                    }
+                }
+            )
+        ) {
+            Box(
+                modifier = Modifier.wrapContentSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (playbackState == PlaybackState.ERROR) {
                     Icon(
-                        painter = painterResource(id = repeatModeIcon),
-                        tint = if (repeatMode == RepeatMode.REPEAT_OFF)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = .3F)
-                        else MaterialTheme.colorScheme.onSurface,
-                        contentDescription = "Repeat"
+                        modifier = Modifier
+                            .padding(horizontal = 5.dp)
+                            .size(70.dp),
+                        painter = painterResource(id = playbackStateIcon),
+                        tint = if (isBuffering)
+                            MaterialTheme.colorScheme.onErrorContainer.copy(alpha = .25F) else
+                            MaterialTheme.colorScheme.onErrorContainer.copy(alpha = .75F),
+                        contentDescription = "Error state"
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            //
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        //.background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(44.dp),
+                            tint = Color.Black,
+                            painter = painterResource(id = playbackStateIcon),
+                            contentDescription = "Play/Pause"
+                        )
+                    }
                 }
 
-                IconButton(onClick = {
-                    onClickQueueIcon()
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.play_list),
-                        contentDescription = "Queue"
+                if (isBuffering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(50.dp),
+                        strokeCap = StrokeCap.Round,
+                        strokeWidth = 1.dp,
+                        //color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = Color.Black
                     )
                 }
+            }
+        }
 
-                IconButton(onClick = {
-                    onToggleShuffleMode(shuffleMode)
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.shuffle),
-                        tint = if (shuffleMode == ShuffleMode.SHUFFLE_OFF)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = .3F)
-                        else MaterialTheme.colorScheme.onSurface,
-                        contentDescription = "Shuffle"
-                    )
-                }
+        IconButton(onClick = {  onClickNext() }) {
+            Icon(
+                painter = painterResource(id = R.drawable.next),
+                //imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Next",
+                modifier = Modifier.size(40.dp),
+                tint = activeColor
+            )
+        }
 
-                IconButton(onClick = {
-                    onClickDownlodsScreenIcon()
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.arrow_downward),
-                        contentDescription = "Downloads"
-                    )
-                }
+        IconButton(onClick = { onToggleRepeatMode(repeatMode) }) {
+            Icon(
+                //painter = painterResource(id = R.drawable.repeat_all),
+                //imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Repeat",
+                painter = painterResource(id = repeatModeIcon),
+                tint = if (repeatMode == RepeatMode.REPEAT_OFF)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = .3F)
+                else MaterialTheme.colorScheme.onSurface,
+                //tint = if (repeatMode == RepeatMode.REPEAT_ALL) activeColor else inactiveColor
+            )
+        }
+    }
+}
 
-                // TODO: Return this when contextual menu is ready
-                /*IconButton(onClick = {
-                    onClickMore()
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More"
-                    )
-                }*/
+@Composable
+private fun PlayerExtraDetails(
+    track: Track,
+    isDarkTheme: Boolean
+) {
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val inverseOnSurface = MaterialTheme.colorScheme.inverseOnSurface
+    val fileTypeTextColor = when (track.bitrate) {
+        in 321..1023 -> if (isDarkTheme) Color(0XFF33FFEE) else Color(0xFF172B2E)
+        in 1024..Int.MAX_VALUE -> if (isDarkTheme) Color(0XFFEFE143) else Color(0xFF221700)
+        else -> onSurface
+    }
+    val fileTypeBadgeColor = when (track.bitrate) {
+        in 321..1023 -> if (isDarkTheme) Color(0xFF172B2E) else Color(0xFFAEFAF4)
+        in 1024..Int.MAX_VALUE -> if (isDarkTheme) Color(0XFF443E30) else Color(0xFFFFFBCC)
+        else -> inverseOnSurface
+    }
+    val fileType by remember {
+        derivedStateOf {
+            track.filepath.substringAfterLast(".").uppercase(Locale.ROOT)
+        }
+    }
+
+    // Bitrate, Track format
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24))
+                .background(
+                    if (isDarkTheme) fileTypeTextColor.copy(alpha = .075F) else fileTypeBadgeColor
+                )
+                .wrapContentSize()
+                .padding(8.dp)
+
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = fileType,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = fileTypeTextColor
+                )
+
+                Text(
+                    text = " • ",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = fileTypeTextColor
+                )
+
+                Text(
+                    text = "${track.bitrate} Kbps",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = fileTypeTextColor
+                )
             }
         }
     }
 }
+
+
+@Composable
+private fun PlayerBottomTabs(
+    onClickQueueIcon:() -> Unit,
+    onClickLyricsIcon:() -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceAround
+    ) {
+        Text("UP NEXT", modifier = Modifier.clickable { onClickQueueIcon() }, style = MaterialTheme.typography.labelMedium.copy(color = Color.White, fontWeight = FontWeight.Bold))
+        Text("LYRICS", modifier = Modifier.clickable { onClickLyricsIcon() }, style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray))
+        // TODO: Return this when related concept is ready
+        Text("RELATED", style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray))
+    }
+}
+
 
 /**
  * Expose a public Composable tied to MediaControllerViewModel
@@ -697,16 +896,10 @@ fun NowPlayingScreen(
         onClickQueueIcon = {
             navigator.gotoQueueScreen()
         },
-        onClickDownlodsScreenIcon = {
-            navigator.gotoDownloadsScreen()
-        },
         onClickMore = {
             mediaControllerViewModel.onPlayerUiEvent(
                 PlayerUiEvent.OnClickMore
             )
-        },
-        onDownloadTrack = { track ->
-            val file = mediaControllerViewModel.downloadTrackFile(track)
         }
     )
 }
@@ -780,9 +973,7 @@ fun FullPlayerPreview() {
             onClickLyricsIcon = {},
             onToggleFavorite = { _, _ -> },
             onClickQueueIcon = {},
-            onClickDownlodsScreenIcon = {},
-            onClickMore = {},
-            onDownloadTrack = {_ -> }
+            onClickMore = {}
         )
     }
 }

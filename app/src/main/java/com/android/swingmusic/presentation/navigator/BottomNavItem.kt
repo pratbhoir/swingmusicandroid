@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import com.android.swingmusic.album.presentation.screen.destinations.AllAlbumScreenDestination
 import com.android.swingmusic.artist.presentation.screen.destinations.AllArtistsScreenDestination
 import com.android.swingmusic.folder.presentation.screen.destinations.FoldersAndTracksPaginatedScreenDestination
+import com.android.swingmusic.player.presentation.screen.destinations.DownloadsScreenDestination
 import com.android.swingmusic.search.presentation.screen.destinations.SearchScreenDestination
 import com.ramcosta.composedestinations.spec.DestinationSpec
 import com.android.swingmusic.uicomponent.R as UiComponent
@@ -29,6 +30,12 @@ sealed class BottomNavItem(
         title = "Artists",
         icon = UiComponent.drawable.ic_artist,
         destination = AllArtistsScreenDestination
+    )
+
+    data object Downloads : BottomNavItem(
+        title = "Downloads",
+        icon = UiComponent.drawable.arrow_downward,
+        destination = DownloadsScreenDestination
     )
 
     data object Search : BottomNavItem(
